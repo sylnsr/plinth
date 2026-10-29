@@ -1,0 +1,31 @@
+#!/bin/bash
+# AAA script: <one line: what this round is for>
+# READ-ONLY diagnostics - nothing is started, stopped or changed.   (or: CHANGES: <exact list>)
+#   1 <section>  2 <section>  3 <section>
+# Style: 2-space indent inside if/for/while/case and { } blocks; one command per line; break long pipes after |
+AGENT_NAME=""   # filled in on submission: <repo>/<agent>
+RUN_NAME=""     # filled in on submission; ends in -<issue> when the script was submitted for a Forgejo issue
+INTERACTIVE=0   # 1 when the script asks the user something (ask_yes): it then runs only in the user's own terminal
+NETWORK=0       # 1 when the script needs the network (curl, git over https; never ssh): the user accepts each run
+PRIVILEGED=0    # 1 when it must run as the user, outside its container (sudo, ssh; INTERACTIVE=1 needs it)
+source "$AAA_LIB"; [[ "${AAA_LOADED:-}" == 1 ]] || { echo "$RUN_NAME: the AAA library didn't load (\$AAA_LIB) - nothing was run" >&2; exit 2; }
+
+# The answer is a document only the library writes: section starts a section, say and block write into it, fail stops
+# the run at a gate. The controller scans the answer once the script has ended; the user releases it.
+section "1. <section>"
+for path in /etc /var/log; do
+  if [[ -d "$path" ]]; then
+    say "$path: a directory"
+  else
+    say "$path: missing"
+  fi
+done
+
+section "2. <section>"
+# a long pipe breaks after |: one part per line, indented by two spaces
+uname -a 2>&1 |
+  scrub |
+  block
+
+# GATE example for a step that changes state:
+# kubectl -n <ns> rollout status deploy/<x> --timeout=300s >/dev/null 2>&1 || fail "<x> did not roll out"

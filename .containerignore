@@ -1,0 +1,11 @@
+# Build context for Containerfile: an allowlist of the Go sources in src/ only. Anything else in src/ (config.yml,
+# config.yml.dist, .claude/, notes) never reaches the build; the Containerfile fails the build if it does.
+*
+!src/go.mod
+!src/go.sum
+!src/cmd/
+!src/internal/
+!src/vendor/
+# Never, even inside the allowed directories: tool and editor folders (Claude Code creates .claude/ where it works).
+**/.claude
+**/.idea

@@ -1,0 +1,7 @@
+# The image Plinth runs this repo's ask scripts in (michael/devops namespace). Published and pinned by the user with
+# plinthctl image publish -n michael/devops; see plinth/docs/runner-image.md.
+# Base: Debian trixie (docker.io/library/debian:trixie of 2026-10-05), pinned by digest only: skopeo refuses a tag
+# together with a digest.
+# Ansible from the distro package, never pip; no ansible-galaxy (collections go in .plinth/collections/ once needed).
+FROM docker.io/library/debian@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5
+RUN apt-get update && apt-get install -y --no-install-recommends ansible-core ca-certificates && rm -rf /var/lib/apt/lists/*

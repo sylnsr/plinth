@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "forgejo": {
+      "type": "http",
+      "url": "${FORGEJO_MCP_URL}/mcp",
+      "headers": {
+        "Authorization": "token ${FORGEJO_MCP_TOKEN}"
+      }
+    },
+    "plinth": {
+      "type": "http",
+      "url": "http://${HOST_VM_IP}:8791/mcp",
+      "headers": {
+        "Authorization": "Bearer ${PLINTH_TOKEN}"
+      }
+    }
+  }
+}

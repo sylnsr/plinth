@@ -1,0 +1,31 @@
+# Plinth's config for one namespace (one repo): <work>/<owner>/<repo>/config.yml. Plinth writes it from this template
+# when the repo is registered and no config.yml is there yet; it never overwrites one. Spec: ai/plinthctl.README.md,
+# Config.
+# - Everything below is commented out on purpose: a key left out takes the value from the global <work>/config.yml,
+#   so a new repo starts with the global defaults (e.g. the automatic reviews) without anyone having to edit this file.
+# - Uncomment a key only to replace the global value for this repo. A list replaces the global list (no merging):
+#   "automatic: []" turns automatic reviews OFF for this repo.
+# - Registering an agent (plinthctl register --repo <path> --agent <agent>) keeps only the sha256 of its token, in
+#   <owner>/<repo>/state/agents/; the agent can't act here until the user enables it: plinthctl agent enable -n
+#   <owner>/<repo> <agent> adds it to plinth.agents.enabled below (agent: the repo its registration must come from),
+#   editing this file by key, comments kept. plinthctl agent disable takes it out again.
+
+# reviewers:
+#   # review types (defined in the global config) that run on every submission on their own and must pass, or be
+#   # overridden by the user, before Exec
+#   automatic:
+#     - security
+#     - dlp
+
+# plinth:
+#   messages:
+#     expiration-minutes: 60
+#     # messages that skip the user's approval (never the tooling or the LLM review)
+#     ungated:
+#       agents: []         # agent NAMES only, never tokens, e.g. [main]
+#       messages: []       # message types from the catalogue, e.g. [sfi, rfc]
+#   exec:
+#     env-file: ""         # a file next to this one, e.g. exec.env: the variables (NAME=value lines) a script gets
+#     network: false       # true lets scripts ask for network mode (NETWORK=1); each run still needs accept network
+#     privileged: false    # true lets scripts ask for privileged mode (PRIVILEGED=1)
+#     memory: 512m         # a run's memory limit, swap included; raise it for heavier scripts

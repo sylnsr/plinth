@@ -1,0 +1,6 @@
+.claude
+.idea
+/out/
+config.yml
+/src/ns-config.yml
+ai/work

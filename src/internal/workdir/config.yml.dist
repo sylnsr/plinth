@@ -1,0 +1,109 @@
+# Plinth's global config: <work>/config.yml (default ~/.plinth/config.yml; --work). Plinth writes it from this template
+# when <work> is set up and no config.yml is there yet; it never overwrites one. Fill in the <...> values: Plinth
+# refuses to start while one is left. Spec: ai/plinthctl.README.md, Config.
+# - The loader is strict: an unknown key, a wrong type or a review type that doesn't exist stops Plinth at start.
+# - "~" and "${VAR}" are expanded in string values, so secrets can stay in the environment.
+# - The per-repo keys (automatic reviews, message expiry, ungated) set here are the DEFAULTS for every namespace. A
+#   namespace's own <work>/<owner>/<repo>/config.yml (template: ns-config.yml.dist) can replace one for that repo;
+#   a key it leaves out takes the value from here. Agents are registered with plinthctl register, never in a config.
+# - If <work> is a git repo, keep the config files out of it (.gitignore).
+
+# required: the Forgejo instance whose repos are the namespaces (issues, Save, Report, sync-issues, the web UI login)
+forgejo-url: "${FORGEJO_URL}"
+# Plinth's own Forgejo token (Save, Report, message review, sync-issues); never an agent's token. Its account and
+# scopes: README.md, "Plinth's Forgejo token".
+forgejo-token: "${PLINTH_FORGEJO_TOKEN}"
+
+reviewers:
+  # each review type: its prompt is the contents of its URLs, joined in this order (put them in the order that settles
+  # any conflict between their directives), or the definition when there are no URLs. Use raw file URLs
+  # (.../raw/branch/...), not the HTML page (.../src/branch/...).
+  type:
+    security:
+      urls:
+        - "${FORGEJO_URL}/<owner>/<repo>/raw/branch/main/reviewers/security.md"
+    dlp:
+      urls:
+        - "${FORGEJO_URL}/<owner>/<repo>/raw/branch/main/reviewers/dlp.md"
+    code:
+      definition: "<the review prompt, used when there are no urls>"
+  # default for every namespace: the review types that run on each submission on their own and must pass, or be
+  # overridden by the user, before Exec. A namespace can replace the list (automatic: [] turns them off for that repo).
+  automatic:
+    - security
+    - dlp
+
+# Ollama runs every review and the DLP scan, so that they stay local. Without ollama.host, or while Ollama is
+# unreachable, they fail closed: nothing is skipped, and only the user's override releases a run.
+ollama:
+  host: "${OLLAMA_HOST}"   # e.g. http://<host>:11434
+  models:
+    review: "<model>"      # e.g. a coder model with a large context
+    dlp: "<model>"
+  timeout-seconds: 300     # per request (default 300)
+  retry-seconds: 10        # wait before the one retry of a transient error (default 10)
+  max-parallel: 1          # Ollama requests at a time, across all namespaces (default 1)
+  # Every call goes through the Ollama gateway, a container on <work>/state/ollama/ollama.sock (plinthctl ollama-mcp start)
+
+plinth:
+  # the Plinth MCP server for agents; each agent authenticates with its own token (plinthctl register)
+  mcp:
+    listen: "0.0.0.0"      # default; agents in containers reach it through host.containers.internal
+    port: 8791             # default
+  # the web UI; it refuses to start without listen, public-url and auth
+  web-ui:
+    listen: "<address>"    # an address on the VM network
+    port: 8790             # default
+    public-url: "https://<host>:8790"   # the URL the browser uses; the login redirects to <public-url>/auth/callback
+    refresh-seconds: 5     # default
+    auth:
+      client-id: "<client-id>"   # the Forgejo OAuth2 application (public client) registered for the web UI
+      users:
+        - <forgejo-login>        # Forgejo logins allowed in
+      session-hours: 12          # default
+  # the terminal UI, plinthctl tui
+  tui:
+    refresh-seconds: 2     # default 2; it reads the files again this often and after every action
+  messages:
+    refresh-seconds: 5     # default
+    catalogue-url: "${FORGEJO_URL}/<owner>/<repo>/raw/branch/main/plinth-messages.yml"   # unparsable = no messages
+    # defaults for every namespace; a namespace can replace each one
+    expiration-minutes: 60 # default 60
+    # messages that skip the user's approval (never the tooling or the LLM review). Default: none
+    ungated:
+      agents: []           # agent NAMES only, never tokens, e.g. [main]
+      messages: []         # message types from the catalogue, e.g. [sfi, rfc]
+  runner:                  # each namespace's runner (was plinth.worker in older versions)
+    poll-seconds: 1        # default
+    max-parallel-exec: 1   # ask scripts running at a time, per namespace (default 1)
+    exec-timeout-minutes: 120   # then SIGTERM, and SIGKILL 30 s later (default 120)
+  # every script runs in a rootless podman container, from the pinned image (plinth.exec.image: plinthctl image publish).
+  # Defaults for every namespace; a namespace can replace each one
+  exec:
+    env-file: ""           # a file in the namespace's directory in <work>, its variables a script's environment;
+                           # default "": none
+    network: false         # allow scripts that say NETWORK=1: a network of their own (no ssh), once you accept each
+                           # run (accept network). Default false
+    privileged: false      # allow scripts that say PRIVILEGED=1: they run only in your own terminal, as you. Default false
+    memory: 512m           # a run's memory limit, swap included (<n>k, <n>m or <n>g, 6m to 64g): for small ad-hoc
+                           # scripts, not applications. Default 512m
+  event-log-max: 10000     # lines per events file before a new file starts (default 10000)
+  # the general log, <work>/logs/plinth-YYYY-MM-DD.log (a new file each day); "Scrub logs" in the web UI or TUI, or
+  # plinthctl logs scrub, deletes the files older than this
+  log:
+    max-age-days: 30       # default 30
+  # a notice (what the controller tells you to act on: a warn or error line with a key in the log) stays open this many
+  # days after its last line unless something clears it; at most plinth.log.max-age-days
+  notice:
+    expires: 14            # default 14
+  # an agent may call ask_preview this many times per hour
+  preview:
+    limit: 60              # default 60; 1 to 1000
+  aaa-raw-dir: "<path>"    # plain AAA: dlp-scan keeps untouched originals here, scrubber deletes them;
+                           # default <work>/aaa-raw
+  repo: "<owner>/<repo>"   # where Save and Report post, one issue per run (title "<ns> <stem>: <what the script says>");
+                           # without it there is neither. It holds every saved run: make it a private repo
+  autosave:
+    runs: false            # true: Save runs by itself right after Done (the TUI's s then says "(runs auto-save)").
+                           # Default false
+    failures: false        # true: Report runs by itself when a run's first check fails (once per run). Default false

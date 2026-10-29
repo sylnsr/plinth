@@ -1,0 +1,28 @@
+#!/bin/bash
+# AAA script: <one line: what this round is for>
+# READ-ONLY diagnostics - nothing is started, stopped or changed.   (or: CHANGES: <exact list>)
+#   1 <section>  2 <section>  3 <section>
+# Style: 2-space indent inside if/for/while/case and { } blocks; one command per line; break long pipes after |
+# See plinthctl help aaa
+RUN_NAME="<adjective>-<noun>-<issue>"   # filled in by plinthctl new-ask; ends in -<issue> for a Forgejo issue of this repo
+AGENT_NAME=""   # the agent that wrote the script
+INTERACTIVE=0   # 1: it asks the user (ask_yes), so it runs only in the user's own terminal, never with AAA_QUIET=1
+source <(plinthctl ask lib); [[ "${AAA_LOADED:-}" == 1 ]] || { echo "$RUN_NAME: the AAA library didn't load (plinthctl ask lib) - nothing was run" >&2; exit 2; }
+
+section "1. <section>"
+for path in /etc /var/log; do
+  if [[ -d "$path" ]]; then
+    say "$path: a directory"
+  else
+    say "$path: missing"
+  fi
+done
+
+section "2. <section>"
+# a long pipe breaks after |: one part per line, indented by two spaces
+uname -a 2>&1 |
+  scrub |
+  block
+
+# GATE example for a step that changes state:
+# kubectl -n <ns> rollout status deploy/<x> --timeout=300s >/dev/null 2>&1 || fail "<x> did not roll out"
